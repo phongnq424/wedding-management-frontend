@@ -1,9 +1,13 @@
-import React, { useState } from "react";
-import { Sparkles } from "lucide-react";
+import { useState } from "react";
+import { useAuth } from "./context/AuthContext";
 
 // Layout components
 import { Sidebar } from "./components/layout/Sidebar";
 import { Header } from "./components/layout/Header";
+
+// Auth components
+import { LoginForm } from "./components/screens/LoginForm";
+import { TwoFAForm } from "./components/screens/TwoFAForm";
 
 // Screen components
 import { DashboardScreen } from "./components/screens/DashboardScreen";
@@ -36,12 +40,20 @@ import { Screen, Role, WeddingPackage } from "./types";
 import { DISH_TYPES_INIT, DISHES_INIT, DISH_COMBOS_INIT, WEDDING_PACKAGES_INIT } from "./data";
 
 export default function App() {
+  const { isLoggedIn, login, verify2FA, logout, isLoading, error, requires2FA, user } = useAuth();
   const [screen, setScreen] = useState<Screen>("login");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<Role>("Operations Manager");
 
+  // Login form state
+  const [email, setEmail] = useState("admin@wedding.local");
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState<string | null>(null);
+
+  // 2FA form state
+  const [twoFACode, setTwoFACode] = useState("");
+
   // Selection state for form screens
-  const [selectedHall, setSelectedHall] = useState<number | null>(null);
+  const [selectedHall, setSelectedHall] = useState<string | null>(null);
   const [selectedHallType, setSelectedHallType] = useState<number | null>(null);
   const [selectedShift, setSelectedShift] = useState<number | null>(null);
   const [selectedService, setSelectedService] = useState<number | null>(null);
@@ -61,69 +73,86 @@ export default function App() {
   // UI state
   const [showPriceModal, setShowPriceModal] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [show2FA, setShow2FA] = useState(false);
+
+  // ── Login Handlers ──────────────────────────────────────────────────────────
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError(null);
+
+    if (!email || !password) {
+      setLoginError("Vui lòng nhập email và password");
+      return;
+    }
+
+    try {
+      await login({ email, password });
+    } catch (err) {
+      setLoginError(err instanceof Error ? err.message : "Đăng nhập thất bại");
+    }
+  };
+
+  const handle2FAVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError(null);
+
+    if (!twoFACode || twoFACode.length !== 6) {
+      setLoginError("Vui lòng nhập mã 6 số");
+      return;
+    }
+
+    if (!user?.id) {
+      setLoginError("User ID missing");
+      return;
+    }
+
+    try {
+      await verify2FA({
+        userId: user.id,
+        code: twoFACode,
+      });
+      setScreen("dashboard");
+    } catch (err) {
+      setLoginError(err instanceof Error ? err.message : "Xác thực 2FA thất bại");
+    }
+  };
 
   // ── Login Screen ──────────────────────────────────────────────────────────
-  const LoginScreen = () => (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#f9f7f4] via-[#faf8f5] to-[#f5f2ed] p-6">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#c9a961] to-[#b89851] mb-4">
-            <Sparkles className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-4xl font-semibold text-primary mb-2">Wedding Center</h1>
-          <p className="text-muted-foreground">Management System</p>
-        </div>
+  if (!isLoggedIn) {
+    if (requires2FA) {
+      return (
+        <TwoFAForm
+          twoFACode={twoFACode}
+          setTwoFACode={setTwoFACode}
+          isLoading={isLoading}
+          error={error}
+          loginError={loginError}
+          onSubmit={handle2FAVerify}
+          onBack={() => {
+            setTwoFACode("");
+            setLoginError(null);
+          }}
+        />
+      );
+    }
 
-        {!show2FA ? (
-          <div className="bg-card rounded-[24px] shadow-lg p-8 border border-border">
-            <h2 className="text-2xl font-semibold text-primary mb-6">Sign In</h2>
-            <div className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Email Address <span className="text-destructive">*</span></label>
-                <input type="email" placeholder="your.email@wedding.vn" className="w-full px-4 py-3 rounded-xl border border-border bg-input-background focus:outline-none focus:ring-2 focus:ring-accent transition-all" defaultValue="tuan.tran@wedding.vn" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Password <span className="text-destructive">*</span></label>
-                <input type="password" placeholder="Enter your password" className="w-full px-4 py-3 rounded-xl border border-border bg-input-background focus:outline-none focus:ring-2 focus:ring-accent transition-all" />
-              </div>
-              <div className="flex items-center justify-between">
-                <label className="flex items-center cursor-pointer">
-                  <input type="checkbox" className="w-4 h-4 rounded border-border text-accent focus:ring-accent" />
-                  <span className="ml-2 text-sm text-muted-foreground">Remember me</span>
-                </label>
-                <button className="text-sm text-accent hover:text-accent/80 transition-colors">Forgot password?</button>
-              </div>
-              <button onClick={() => setShow2FA(true)} className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-all shadow-sm">Sign In</button>
-            </div>
-            <div className="mt-6 pt-6 border-t border-border">
-              <p className="text-xs text-center text-muted-foreground">Authorized access only. All activities are monitored and logged.</p>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-card rounded-[24px] shadow-lg p-8 border border-border">
-            <h2 className="text-2xl font-semibold text-primary mb-2">Two-Factor Authentication</h2>
-            <p className="text-sm text-muted-foreground mb-6">Enter the 6-digit code from your authenticator app</p>
-            <div className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Authentication Code <span className="text-destructive">*</span></label>
-                <input type="text" placeholder="000000" maxLength={6} className="w-full px-4 py-3 rounded-xl border border-border bg-input-background focus:outline-none focus:ring-2 focus:ring-accent transition-all text-center text-2xl tracking-widest font-mono" />
-              </div>
-              <div className="flex gap-3">
-                <button onClick={() => setShow2FA(false)} className="flex-1 py-3 border border-border text-foreground rounded-xl font-medium hover:bg-secondary transition-all">Back</button>
-                <button onClick={() => { setIsLoggedIn(true); setScreen("dashboard"); }} className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-all shadow-sm">Verify</button>
-              </div>
-            </div>
-            <div className="mt-6 pt-6 border-t border-border">
-              <button className="text-sm text-accent hover:text-accent/80 transition-colors w-full text-center">Having trouble? Contact administrator</button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+    return (
+      <LoginForm
+        email={email}
+        setEmail={setEmail}
+        password={password}
+        setPassword={setPassword}
+        isLoading={isLoading}
+        error={error}
+        loginError={loginError}
+        onSubmit={handleLogin}
+      />
+    );
+  }
 
-  if (!isLoggedIn) return <LoginScreen />;
+  const handleLogout = async () => {
+    await logout();
+    setScreen("login");
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -132,7 +161,7 @@ export default function App() {
         showNotifications={showNotifications}
         setShowNotifications={setShowNotifications}
         userRole={userRole}
-        setIsLoggedIn={setIsLoggedIn}
+        setIsLoggedIn={handleLogout}
         setScreen={setScreen}
       />
 

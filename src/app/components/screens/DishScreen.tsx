@@ -3,7 +3,7 @@ import { Plus, Search, Edit, Trash2, AlertCircle, CheckCircle2, X, Save } from "
 import { formatVND, StatusBadge } from "../../utils";
 
 type DishType = { id: number; name: string; description: string; status: string; deleted: boolean; lastModified: string };
-type Dish = { id: number; name: string; dishTypeId: number; dishTypeName: string; unitPrice: number; image?: string; description: string; status: string; deleted: boolean; lastModified: string };
+type Dish = { id: number; name: string; dishTypeId: number; dishTypeName: string; unitPrice: number; image: string; description: string; status: string; deleted: boolean; lastModified: string };
 
 interface Props {
   dishes: Dish[];
@@ -59,7 +59,7 @@ export const DishListScreen = ({ dishes, setDishes, dishTypes }: Props) => {
       setDishMsg({ type: "success", text: "MSG 17: Dish updated successfully." });
     } else {
       const newId = Math.max(0, ...dishes.map((d) => d.id)) + 1;
-      setDishes([...dishes, { id: newId, name: dishFormName.trim(), dishTypeId: Number(dishFormTypeId), dishTypeName: typeName, unitPrice: price, description: dishFormDesc, status: "Active", deleted: false, lastModified: now }]);
+      setDishes([...dishes, { id: newId, name: dishFormName.trim(), dishTypeId: Number(dishFormTypeId), dishTypeName: typeName, image: "", unitPrice: price, description: dishFormDesc, status: "Active", deleted: false, lastModified: now }]);
       setDishMsg({ type: "success", text: "Dish created successfully." });
     }
     setShowDishForm(false);
