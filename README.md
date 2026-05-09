@@ -22,7 +22,7 @@ Frontend application for the Wedding Management System built with React + Vite.
 Backend API:
 
 ```txt
-[https://github.com/your-username/wedding-management-backend](https://github.com/phongnq424/wedding-center-management-backend)
+https://github.com/phongnq424/wedding-center-management-backend
 ```
 
 Example API URL:
