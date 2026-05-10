@@ -27,6 +27,10 @@ export type Screen =
   | "roles"
   | "reports"
   | "audit"
+  | "beverage-type-list"
+  | "beverage-type-form"
+  | "beverage-list"
+  | "beverage-form"
   | "settings";
 
 export type Role =

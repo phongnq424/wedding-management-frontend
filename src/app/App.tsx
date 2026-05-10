@@ -27,6 +27,8 @@ import {
 import { PaymentScreen, InvoiceScreen } from "./components/screens/FinanceScreens";
 import { DishTypeListScreen } from "./components/screens/DishTypeScreen";
 import { DishListScreen } from "./components/screens/DishScreen";
+import { BeverageTypeListScreen } from "./components/screens/BeverageTypeScreen";
+import { BeverageListScreen } from "./components/screens/BeverageScreen";
 import { DishComboListScreen } from "./components/screens/DishComboScreen";
 import { PackageListScreen, PackageFormScreen } from "./components/screens/PackageScreens";
 import {
@@ -58,8 +60,8 @@ export default function App() {
   // Selection state for form screens
   const [selectedHall, setSelectedHall] = useState<string | null>(null);
   const [selectedHallType, setSelectedHallType] = useState<string | null>(null);
-  const [selectedShift, setSelectedShift] = useState<number | null>(null);
-  const [selectedService, setSelectedService] = useState<number | null>(null);
+  const [selectedShift, setSelectedShift] = useState<string | null>(null);
+  const [selectedService, setSelectedService] = useState<string | null>(null);
   const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
 
   // Module data state
@@ -206,11 +208,15 @@ export default function App() {
           {/* Finance screens */}
           {screen === "payment" && <PaymentScreen />}
           {screen === "invoice" && <InvoiceScreen />}
+          {screen === "beverage-type-list" && <BeverageTypeListScreen />}
 
+          {screen === "beverage-list" && <BeverageListScreen />}
           {/* Dish / Menu screens */}
-          {screen === "dish-type-list" && <DishTypeListScreen dishTypes={dishTypes} setDishTypes={setDishTypes} />}
-          {screen === "dish-list" && <DishListScreen dishes={dishes} setDishes={setDishes} dishTypes={dishTypes} />}
-          {screen === "dish-combo-list" && <DishComboListScreen dishCombos={dishCombos} setDishCombos={setDishCombos} dishes={dishes} dishTypes={dishTypes} />}
+
+          {screen === "dish-type-list" && <DishTypeListScreen />}
+
+          {screen === "dish-list" && <DishListScreen />}
+          {screen === "dish-combo-list" && <DishComboListScreen />}
 
           {/* Package screens */}
           {screen === "package-list" && (

@@ -2,7 +2,7 @@ import React from "react";
 import {
   LayoutDashboard, Calendar, Building2, Layers, Clock, Sparkles,
   UtensilsCrossed, Package, Users, CreditCard, FileText, BarChart3,
-  Shield, Settings, CalendarCheck, History,
+  Shield, Settings, CalendarCheck, History, Coffee,
 } from "lucide-react";
 import { Screen, Role } from "../../types";
 
@@ -24,6 +24,8 @@ export const Sidebar = ({ screen, setScreen, userRole }: SidebarProps) => {
     { icon: Layers, label: "Dish Types", screen: "dish-type-list" as Screen },
     { icon: UtensilsCrossed, label: "Dishes", screen: "dish-list" as Screen },
     { icon: Package, label: "Dish Combos", screen: "dish-combo-list" as Screen },
+    { icon: Layers, label: "Beverage Types", screen: "beverage-type-list" as Screen },
+    { icon: Coffee, label: "Beverages", screen: "beverage-list" as Screen },
     { icon: Package, label: "Wedding Packages", screen: "package-list" as Screen },
     { icon: UtensilsCrossed, label: "Menu / Packages", screen: "menu" as Screen },
     { icon: Users, label: "Staff", screen: "staff" as Screen },
@@ -54,11 +56,10 @@ export const Sidebar = ({ screen, setScreen, userRole }: SidebarProps) => {
           <button
             key={item.label}
             onClick={() => setScreen(item.screen)}
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all ${
-              screen === item.screen
-                ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-                : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-            }`}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all ${screen === item.screen
+              ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
+              : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              }`}
           >
             <item.icon className="w-5 h-5" />
             <span className="text-sm font-medium">{item.label}</span>
