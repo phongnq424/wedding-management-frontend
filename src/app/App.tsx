@@ -11,8 +11,11 @@ import { TwoFAForm } from "./components/screens/TwoFAForm";
 
 // Screen components
 import { DashboardScreen } from "./components/screens/DashboardScreen";
-import { HallListScreen, HallFormScreen } from "./components/screens/HallScreens";
-import { HallTypeListScreen, HallTypeFormScreen } from "./components/screens/HallTypeScreens";
+import { HallListScreen, HallFormScreen } from "./components/screens/hall";
+import {
+  HallTypeListScreen,
+  HallTypeFormScreen,
+} from "./components/screens/hallType";
 import { ShiftListScreen, ShiftFormScreen } from "./components/screens/ShiftScreens";
 import { ServiceListScreen, ServiceFormScreen } from "./components/screens/ServiceScreens";
 import {
@@ -54,7 +57,7 @@ export default function App() {
 
   // Selection state for form screens
   const [selectedHall, setSelectedHall] = useState<string | null>(null);
-  const [selectedHallType, setSelectedHallType] = useState<number | null>(null);
+  const [selectedHallType, setSelectedHallType] = useState<string | null>(null);
   const [selectedShift, setSelectedShift] = useState<number | null>(null);
   const [selectedService, setSelectedService] = useState<number | null>(null);
   const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
