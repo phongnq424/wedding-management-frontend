@@ -22,7 +22,8 @@ import {
   BookingScreen,
   CheckHallAvailabilityScreen,
   BookingFormScreen,
-} from "./components/screens/BookingScreens";
+  type BookingPreselect,
+} from "./components/screens/booking";
 
 import { PaymentScreen, InvoiceScreen } from "./components/screens/FinanceScreens";
 import { DishTypeListScreen } from "./components/screens/DishTypeScreen";
@@ -41,8 +42,7 @@ import {
 } from "./components/screens/MiscScreens";
 
 // Types and initial data
-import { Screen, Role, WeddingPackage } from "./types";
-import { DISH_TYPES_INIT, DISHES_INIT, DISH_COMBOS_INIT, WEDDING_PACKAGES_INIT } from "./data";
+import { Screen, Role } from "./types";
 
 export default function App() {
   const { isLoggedIn, login, verify2FA, logout, isLoading, error, requires2FA, user } = useAuth();
@@ -62,18 +62,13 @@ export default function App() {
   const [selectedHallType, setSelectedHallType] = useState<string | null>(null);
   const [selectedShift, setSelectedShift] = useState<string | null>(null);
   const [selectedService, setSelectedService] = useState<string | null>(null);
-  const [selectedPackage, setSelectedPackage] = useState<number | null>(null);
+  const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
 
-  // Module data state
-  const [dishTypes, setDishTypes] = useState(DISH_TYPES_INIT);
-  const [dishes, setDishes] = useState(DISHES_INIT);
-  const [dishCombos, setDishCombos] = useState(DISH_COMBOS_INIT);
-  const [packages, setPackages] = useState<WeddingPackage[]>(WEDDING_PACKAGES_INIT as WeddingPackage[]);
 
   // Booking pre-selection (from Check Availability → Booking Form)
-  const [bookingPreselect, setBookingPreselect] = useState<{
-    hallName: string; hallId: number; date: string; shift: string;
-  } | null>(null);
+  const [bookingPreselect, setBookingPreselect] =
+    useState<BookingPreselect | null>(null);
 
   // UI state
   const [showPriceModal, setShowPriceModal] = useState(false);
@@ -191,7 +186,12 @@ export default function App() {
           {screen === "service-form" && <ServiceFormScreen selectedService={selectedService} setScreen={setScreen} />}
 
           {/* Booking screens */}
-          {screen === "booking" && <BookingScreen setScreen={setScreen} />}
+          {screen === "booking" && (
+            <BookingScreen
+              setScreen={setScreen}
+              setSelectedBookingId={setSelectedBookingId}
+            />
+          )}
           {screen === "booking-availability" && (
             <CheckHallAvailabilityScreen
               setScreen={setScreen}
@@ -202,7 +202,8 @@ export default function App() {
             <BookingFormScreen
               setScreen={setScreen}
               bookingPreselect={bookingPreselect}
-              packages={packages}
+              selectedBookingId={selectedBookingId}
+              setSelectedBookingId={setSelectedBookingId}
             />
           )}
           {/* Finance screens */}
@@ -222,17 +223,14 @@ export default function App() {
           {screen === "package-list" && (
             <PackageListScreen
               setScreen={setScreen}
-              packages={packages}
-              setPackages={setPackages}
               selectedPackage={selectedPackage}
               setSelectedPackage={setSelectedPackage}
             />
           )}
+
           {screen === "package-form" && (
             <PackageFormScreen
               setScreen={setScreen}
-              packages={packages}
-              setPackages={setPackages}
               selectedPackage={selectedPackage}
               setSelectedPackage={setSelectedPackage}
             />
