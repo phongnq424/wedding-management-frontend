@@ -380,7 +380,7 @@ export const BookingScreen = ({ setScreen, setSelectedBookingId }: BookingScreen
                                 <tr key={booking.id} className="hover:bg-secondary/40 transition-colors">
                                     <td className="px-5 py-4 font-mono text-sm text-primary font-semibold">{booking.id.slice(0, 8)}</td>
                                     <td className="px-5 py-4"><p className="text-sm font-medium text-foreground">{booking.customerName}</p><p className="text-xs text-muted-foreground">{booking.customerPhone}</p></td>
-                                    <td className="px-5 py-4"><p className="text-sm text-foreground">{booking.brideName}</p><p className="text-xs text-muted-foreground">& {booking.groomName}</p></td>
+                                    <td className="px-5 py-4"><p className="text-sm text-foreground">{booking.brideName}</p><p className="text-sm text-foreground">/ {booking.groomName}</p></td>
                                     <td className="px-5 py-4 text-sm text-foreground">{booking.hallName ?? "N/A"}</td>
                                     <td className="px-5 py-4 text-sm font-mono text-foreground">{booking.weddingDateText}</td>
                                     <td className="px-5 py-4 text-sm text-foreground">{booking.shiftName ?? "N/A"}</td>

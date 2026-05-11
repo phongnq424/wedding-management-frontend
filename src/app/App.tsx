@@ -25,7 +25,7 @@ import {
   type BookingPreselect,
 } from "./components/screens/booking";
 
-import { PaymentScreen, InvoiceScreen } from "./components/screens/FinanceScreens";
+import { PaymentScreen, InvoiceScreen } from "./components/screens/finance";
 import { DishTypeListScreen } from "./components/screens/DishTypeScreen";
 import { DishListScreen } from "./components/screens/DishScreen";
 import { BeverageTypeListScreen } from "./components/screens/BeverageTypeScreen";
@@ -154,6 +154,24 @@ export default function App() {
     setScreen("login");
   };
 
+  const goToBookingAvailability = () => {
+    setSelectedBookingId(null);
+    setBookingPreselect(null);
+    setScreen("booking-availability");
+  };
+
+  const goToBookingFormForEdit = (bookingId: string | null) => {
+    setSelectedBookingId(bookingId);
+    setBookingPreselect(null);
+    setScreen("booking-form");
+  };
+
+  const goToBookingFormFromAvailability = (preselect: BookingPreselect | null) => {
+    setSelectedBookingId(null);
+    setBookingPreselect(preselect);
+    setScreen("booking-form");
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Sidebar screen={screen} setScreen={setScreen} userRole={userRole} />
@@ -188,19 +206,42 @@ export default function App() {
           {/* Booking screens */}
           {screen === "booking" && (
             <BookingScreen
-              setScreen={setScreen}
-              setSelectedBookingId={setSelectedBookingId}
+              setScreen={(nextScreen) => {
+                if (nextScreen === "booking-availability") {
+                  goToBookingAvailability();
+                  return;
+                }
+
+                setScreen(nextScreen);
+              }}
+              setSelectedBookingId={(id) => {
+                if (id) {
+                  goToBookingFormForEdit(id);
+                  return;
+                }
+
+                setSelectedBookingId(null);
+              }}
             />
           )}
+
           {screen === "booking-availability" && (
             <CheckHallAvailabilityScreen
               setScreen={setScreen}
-              setBookingPreselect={setBookingPreselect}
+              setBookingPreselect={goToBookingFormFromAvailability}
             />
           )}
+
           {screen === "booking-form" && (
             <BookingFormScreen
-              setScreen={setScreen}
+              setScreen={(nextScreen) => {
+                if (nextScreen === "booking") {
+                  setSelectedBookingId(null);
+                  setBookingPreselect(null);
+                }
+
+                setScreen(nextScreen);
+              }}
               bookingPreselect={bookingPreselect}
               selectedBookingId={selectedBookingId}
               setSelectedBookingId={setSelectedBookingId}
