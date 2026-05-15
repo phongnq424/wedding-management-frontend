@@ -1,6 +1,7 @@
 import { Building2, XCircle } from "lucide-react";
 import { formatVND, StatusBadge } from "../../../utils";
 import type { BookingTableRow } from "./booking.mapper";
+import { getBookingLinePriceLabel } from "./booking.mapper";
 
 export function BookingDetailDrawer({
     booking,
@@ -85,9 +86,26 @@ export function BookingDetailDrawer({
                                     <div key={line.id} className="flex items-center justify-between gap-3 text-sm border-b border-border last:border-b-0 pb-2 last:pb-0">
                                         <div className="min-w-0">
                                             <p className="text-foreground font-medium truncate">{line.itemName}</p>
-                                            <p className="text-xs text-muted-foreground">{line.itemType} · x{line.quantity ?? 1}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {line.itemType}
+                                                {line.sourceType ? ` · ${line.sourceType}` : ""}
+                                                {line.itemType !== "DISCOUNT" && line.itemType !== "BENEFIT"
+                                                    ? ` · x${line.quantity ?? 1}`
+                                                    : ""}
+                                            </p>
                                         </div>
-                                        <span className="font-mono text-xs text-foreground">{formatVND(line.lineAmount ?? 0)}</span>
+                                        <span
+                                            className={`font-mono text-xs ${line.sourceType === "PACKAGE_BENEFIT" || line.itemType === "BENEFIT"
+                                                ? "text-emerald-600"
+                                                : line.sourceType === "PACKAGE_INCLUDED"
+                                                    ? "text-muted-foreground"
+                                                    : line.sourceType === "PACKAGE_DISCOUNT" || line.itemType === "DISCOUNT"
+                                                        ? "text-rose-600"
+                                                        : "text-foreground"
+                                                }`}
+                                        >
+                                            {getBookingLinePriceLabel(line)}
+                                        </span>
                                     </div>
                                 ))}
                             </div>
