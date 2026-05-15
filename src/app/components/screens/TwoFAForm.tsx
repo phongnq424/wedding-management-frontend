@@ -31,8 +31,13 @@ export function TwoFAForm({
                 </div>
 
                 <div className="bg-card rounded-[24px] shadow-lg p-8 border border-border">
-                    <h2 className="text-2xl font-semibold text-primary mb-2">Two-Factor Authentication</h2>
-                    <p className="text-sm text-muted-foreground mb-6">Enter the 6-digit code from your authenticator app</p>
+                    <h2 className="text-2xl font-semibold text-primary mb-2">
+                        Two-Factor Authentication
+                    </h2>
+
+                    <p className="text-sm text-muted-foreground mb-6">
+                        Enter the 6-digit code sent to your email.
+                    </p>
 
                     {(loginError || error) && (
                         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -43,14 +48,20 @@ export function TwoFAForm({
                     <form onSubmit={onSubmit} className="space-y-5">
                         <div>
                             <label className="block text-sm font-medium text-foreground mb-2">
-                                Authentication Code <span className="text-destructive">*</span>
+                                Email Verification Code <span className="text-destructive">*</span>
                             </label>
+
                             <input
                                 type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                autoComplete="one-time-code"
                                 placeholder="000000"
                                 maxLength={6}
                                 value={twoFACode}
-                                onChange={(e) => setTwoFACode(e.target.value.replace(/\D/g, ''))}
+                                onChange={(e) =>
+                                    setTwoFACode(e.target.value.replace(/\D/g, '').slice(0, 6))
+                                }
                                 disabled={isLoading}
                                 className="w-full px-4 py-3 rounded-xl border border-border bg-input-background focus:outline-none focus:ring-2 focus:ring-accent transition-all text-center text-2xl tracking-widest font-mono disabled:opacity-50"
                             />
@@ -65,9 +76,10 @@ export function TwoFAForm({
                             >
                                 Back
                             </button>
+
                             <button
                                 type="submit"
-                                disabled={isLoading}
+                                disabled={isLoading || twoFACode.length !== 6}
                                 className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-all shadow-sm disabled:opacity-50"
                             >
                                 {isLoading ? 'Verifying...' : 'Verify'}
@@ -77,6 +89,7 @@ export function TwoFAForm({
 
                     <div className="mt-6 pt-6 border-t border-border">
                         <button
+                            type="button"
                             className="text-sm text-accent hover:text-accent/80 transition-colors w-full text-center"
                             disabled={isLoading}
                         >

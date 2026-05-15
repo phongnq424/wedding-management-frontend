@@ -33,16 +33,17 @@ import { BeverageListScreen } from "./components/screens/BeverageScreen";
 import { DishComboListScreen } from "./components/screens/DishComboScreen";
 import { PackageListScreen, PackageFormScreen } from "./components/screens/PackageScreens";
 import {
-  MenuScreen,
   StaffScreen,
-  RolesScreen,
   ReportsScreen,
   AuditScreen,
   SettingsScreen,
 } from "./components/screens/MiscScreens";
 
+import { RolesScreen } from "./components/screens/RoleScreen";
+
 // Types and initial data
 import { Screen, Role } from "./types";
+import { authService } from "./services/authService";
 
 export default function App() {
   const { isLoggedIn, login, verify2FA, logout, isLoading, error, requires2FA, user } = useAuth();
@@ -94,22 +95,26 @@ export default function App() {
   const handle2FAVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError(null);
-
+    
     if (!twoFACode || twoFACode.length !== 6) {
       setLoginError("Vui lòng nhập mã 6 số");
       return;
     }
 
-    if (!user?.id) {
-      setLoginError("User ID missing");
+    const pending2FA = authService.getPending2FA();
+
+    if (!pending2FA?.mfaChallengeId) {
+      setLoginError("Phiên xác thực 2FA không hợp lệ. Vui lòng đăng nhập lại.");
       return;
     }
 
     try {
       await verify2FA({
-        userId: user.id,
-        code: twoFACode,
+        mfaChallengeId: pending2FA.mfaChallengeId,
+        inputCode: twoFACode,
       });
+
+      setTwoFACode("");
       setScreen("dashboard");
     } catch (err) {
       setLoginError(err instanceof Error ? err.message : "Xác thực 2FA thất bại");
@@ -128,6 +133,7 @@ export default function App() {
           loginError={loginError}
           onSubmit={handle2FAVerify}
           onBack={() => {
+            authService.clearPending2FA();
             setTwoFACode("");
             setLoginError(null);
           }}
@@ -278,9 +284,8 @@ export default function App() {
           )}
 
           {/* Misc screens */}
-          {screen === "menu" && <MenuScreen />}
           {screen === "staff" && <StaffScreen />}
-          {screen === "roles" && <RolesScreen userRole={userRole} setUserRole={setUserRole} />}
+          {screen === "roles" && <RolesScreen />}
           {screen === "reports" && <ReportsScreen />}
           {screen === "audit" && <AuditScreen />}
           {screen === "settings" && <SettingsScreen />}

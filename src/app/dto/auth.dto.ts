@@ -32,6 +32,6 @@ export interface LoginResponse {
 }
 
 export interface Verify2FARequest {
-    userId: string;
-    code: string;
+    mfaChallengeId: string;
+    inputCode: string;
 }

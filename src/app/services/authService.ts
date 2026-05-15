@@ -58,33 +58,40 @@ export const authService = {
      */
     async verify2FA(request: Verify2FARequest): Promise<LoginResponse> {
         try {
-            const response = await apiRequest<LoginResponse>('/auth/2fa/verify', {
+            const data = await apiRequest<LoginData>('/auth/2fa/verify', {
                 method: 'POST',
                 body: JSON.stringify(request),
                 auth: false,
             });
 
-            // Store tokens
-            if (response.accessToken) {
-                localStorage.setItem(AUTH_TOKEN_KEY, response.accessToken);
-            }
-            if (response.refreshToken) {
-                localStorage.setItem(REFRESH_TOKEN_KEY, response.refreshToken);
-            }
-            // Store user info
-            localStorage.setItem(USER_KEY, JSON.stringify(response.user));
+            const user: AuthUser = {
+                id: data.staffId,
+                email: data.email,
+                name: data.fullName,
+                role: data.roleName,
+            };
 
-            // Clear pending 2FA
+            const loginResponse: LoginResponse = {
+                accessToken: data.accessToken,
+                user,
+                requires2FA: data.requires2FA,
+                mfaChallengeId: data.mfaChallengeId,
+            };
+
+            if (data.accessToken) {
+                localStorage.setItem(AUTH_TOKEN_KEY, data.accessToken);
+            }
+
+            localStorage.setItem(USER_KEY, JSON.stringify(user));
             localStorage.removeItem(PENDING_2FA_KEY);
 
-            return response;
+            return loginResponse;
         } catch (error) {
             throw new Error(
                 error instanceof Error ? error.message : '2FA verification failed'
             );
         }
     },
-
     /**
      * Get pending 2FA data
      */
