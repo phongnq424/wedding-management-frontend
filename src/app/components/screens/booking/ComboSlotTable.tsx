@@ -45,6 +45,25 @@ export function ComboSlotTable({
 }) {
     const slots = combo.slots ?? [];
     const activeDishes = dishes.filter((dish) => dish.status === "ACTIVE");
+    const getSlotDefaultPrice = (slot: ComboSlot) => {
+        const defaultDish = activeDishes.find((dish) => dish.id === slot.defaultDishId);
+        return slot.unitPrice ?? defaultDish?.unitPrice ?? 0;
+    };
+
+    const originalMenuTotal = slots.reduce((sum, slot) => {
+        return sum + getSlotDefaultPrice(slot);
+    }, 0);
+
+    const currentMenuTotal = slots.reduce((sum, slot, index) => {
+        const slotId = String(slot.slotId ?? slot.id ?? index);
+        const replacement = slotReplacements[slotId];
+
+        return sum + (replacement?.price ?? getSlotDefaultPrice(slot));
+    }, 0);
+
+    const discountRate = combo.comboDiscountRate ?? 0;
+    const discountedMenuTotal = currentMenuTotal * (1 - discountRate / 100);
+    const menuSavingAmount = Math.max(currentMenuTotal - discountedMenuTotal, 0);
 
     if (slots.length === 0) {
         return (
@@ -78,9 +97,23 @@ export function ComboSlotTable({
                     {slots.map((slot, index) => {
                         const slotId = String(slot.slotId ?? slot.id ?? index);
                         const replacement = slotReplacements[slotId];
-                        const currentDishName = replacement?.dishName ?? slot.defaultDishName ?? "N/A";
-                        const currentPrice = replacement?.price ?? slot.unitPrice ?? 0;
-                        const defaultPrice = slot.unitPrice ?? 0;
+                        const defaultDish = activeDishes.find((dish) => dish.id === slot.defaultDishId);
+
+                        const currentDishName =
+                            replacement?.dishName ??
+                            slot.defaultDishName ??
+                            defaultDish?.name ??
+                            "N/A";
+
+                        const defaultPrice =
+                            slot.unitPrice ??
+                            defaultDish?.unitPrice ??
+                            0;
+
+                        const currentPrice =
+                            replacement?.price ??
+                            defaultPrice;
+
                         const priceDiff = currentPrice - defaultPrice;
                         const isReplacing = replacingSlotId === slotId;
                         const alternativeDishes = activeDishes.filter((dish) => {
@@ -151,6 +184,39 @@ export function ComboSlotTable({
                     })}
                 </tbody>
             </table>
+            <div className="border-t border-border bg-secondary/40 px-4 py-3 space-y-1.5 text-sm">
+                <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground">Tổng món gốc</span>
+                    <span className="font-mono text-foreground">
+                        {formatVND(originalMenuTotal)}
+                    </span>
+                </div>
+
+                {currentMenuTotal !== originalMenuTotal && (
+                    <div className="flex justify-between gap-3">
+                        <span className="text-muted-foreground">Tổng sau thay đổi món</span>
+                        <span className="font-mono text-foreground">
+                            {formatVND(currentMenuTotal)}
+                        </span>
+                    </div>
+                )}
+
+                <div className="flex justify-between gap-3">
+                    <span className="text-muted-foreground">
+                        Giảm giá combo ({discountRate}%)
+                    </span>
+                    <span className="font-mono text-rose-600">
+                        -{formatVND(menuSavingAmount)}
+                    </span>
+                </div>
+
+                <div className="flex justify-between gap-3 border-t border-border pt-1.5 font-semibold">
+                    <span className="text-foreground">Tổng món sau discount</span>
+                    <span className="font-mono text-accent">
+                        {formatVND(discountedMenuTotal)}
+                    </span>
+                </div>
+            </div>
         </div>
     );
 }

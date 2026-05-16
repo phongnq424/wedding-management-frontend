@@ -13,6 +13,15 @@ export type BookingPreselect = {
     shiftName: string;
 };
 
+export type ManualMenuMode = "COMBO" | "CUSTOM";
+
+export type ManualComboSelection = {
+    localId: string;
+    comboId: string;
+    tableCount: number;
+    slotReplacements: Record<string, { dishId: string; dishName: string; price: number }>;
+};
+
 export type BookingScreenProps = {
     setScreen: (s: Screen) => void;
     setSelectedBooking?: (id: string | null) => void;

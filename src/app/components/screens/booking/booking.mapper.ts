@@ -122,7 +122,8 @@ export function mapBookingToRow(item: BookingResponse): BookingTableRow {
 
 export function getPackagePricePerTable(pkg: WeddingPackageResponse | null | undefined) {
     if (!pkg) return 0;
-    return pkg.estimatedPackageTotal ?? pkg.estimatedDiscountedMenuComboPrice ?? 0;
+
+    return pkg.estimatedDiscountedMenuComboPrice ?? 0;
 }
 
 /**
@@ -136,6 +137,7 @@ export function buildPackageDraftLines(args: {
     selectedComboId: string | null;
     extraServices: SelectedService[];
     extraDishes: SelectedDish[];
+    extraBeverages?: SelectedBeverage[];
 }): BookingLineRequest[] {
     const lines: BookingLineRequest[] = [];
     let order = 1;
@@ -165,6 +167,21 @@ export function buildPackageDraftLines(args: {
             itemName: dish.name,
             quantity: normalizeQuantity(quantity),
             unitPrice: dish.unitPrice ?? 0,
+            discountAmount: 0,
+            taxRate: 0,
+            sourceType: "MANUAL_EXTRA",
+            editable: true,
+            removable: true,
+            displayOrder: order++,
+        });
+    });
+    args.extraBeverages?.forEach(({ beverage, quantity }) => {
+        lines.push({
+            itemType: "BEVERAGE",
+            itemId: beverage.id,
+            itemName: beverage.name,
+            quantity: normalizeQuantity(quantity),
+            unitPrice: beverage.unitPrice ?? 0,
             discountAmount: 0,
             taxRate: 0,
             sourceType: "MANUAL_EXTRA",
@@ -277,9 +294,12 @@ export function getPackageBenefitTexts(pkg: WeddingPackageResponse | null | unde
         })
         .filter((item): item is string => Boolean(item));
 
-    const summary = asString(raw.benefitSummary);
+    if (benefitItems.length > 0) {
+        return Array.from(new Set(benefitItems));
+    }
 
-    return Array.from(new Set([...benefitItems, ...(summary ? summary.split("\n") : [])]));
+    const summary = asString(raw.benefitSummary);
+    return summary ? summary.split("\n").filter(Boolean) : [];
 }
 
 export function getPackageConditionTexts(pkg: WeddingPackageResponse | null | undefined): string[] {
@@ -312,6 +332,9 @@ export function getPackageConditionTexts(pkg: WeddingPackageResponse | null | un
                 case "MAX_TABLES":
                     return numericValue !== null ? `Số bàn tối đa: ${numericValue}` : "Có điều kiện số bàn tối đa";
 
+                case "CUSTOM":
+                    return conditionValue ? `Điều kiện khác: ${conditionValue}` : "Điều kiện khác";
+
                 default:
                     if (conditionValue) return `${conditionType}: ${conditionValue}`;
                     if (numericValue !== null) return `${conditionType}: ${numericValue}`;
@@ -322,9 +345,12 @@ export function getPackageConditionTexts(pkg: WeddingPackageResponse | null | un
         })
         .filter((item): item is string => Boolean(item));
 
-    const summary = asString(raw.conditionSummary);
+    if (conditionItems.length > 0) {
+        return Array.from(new Set(conditionItems));
+    }
 
-    return Array.from(new Set([...conditionItems, ...(summary ? summary.split("\n") : [])]));
+    const summary = asString(raw.conditionSummary);
+    return summary ? summary.split("\n").filter(Boolean) : [];
 }
 
 export function buildPackagePreviewLines(pkg: WeddingPackageResponse | null | undefined): BookingLineRequest[] {

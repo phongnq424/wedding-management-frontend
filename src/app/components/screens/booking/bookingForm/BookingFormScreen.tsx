@@ -42,6 +42,8 @@ import {
 import type {
     CustomerFormState,
     EditBookingLike,
+    ManualComboSelection,
+    ManualMenuMode,
     SelectedServiceState,
 } from "./BookingForm.types";
 import { BookingCustomerStep } from "./BookingCustomerStep";
@@ -49,6 +51,20 @@ import { BookingPackageMode } from "./BookingPackageMode";
 import { BookingManualMode } from "./BookingManualMode";
 import { BookingDepositStep } from "./BookingDepositStep";
 import { BookingSummaryPanel } from "./BookingSummaryPanel";
+
+type ManualComboPayload = {
+    comboId: string;
+    tableCount: number;
+    slotReplacements: Array<{
+        slotId: string;
+        dishId: string;
+    }>;
+};
+
+type BookingRequestPayloadWithManual = BookingRequestPayload & {
+    manualMenuMode?: ManualMenuMode | null;
+    manualComboSelections?: ManualComboPayload[];
+};
 
 const EMPTY_CUSTOMER_FORM: CustomerFormState = {
     customerName: "",
@@ -99,6 +115,12 @@ export const BookingFormScreen = ({
 
     const [extraServicesState, setExtraServicesState] = useState<SelectedServiceState[]>([]);
     const [extraDishes, setExtraDishes] = useState<Array<{ dishId: string; quantity: number }>>([]);
+    const [extraBeverages, setExtraBeverages] = useState<
+        Array<{ beverageId: string; quantity: number }>
+    >([]);
+
+    const [manualMenuMode, setManualMenuMode] = useState<ManualMenuMode>("CUSTOM");
+    const [manualComboSelections, setManualComboSelections] = useState<ManualComboSelection[]>([]);
 
     const [manualServicesState, setManualServicesState] = useState<SelectedServiceState[]>([]);
     const [manualDishes, setManualDishes] = useState<Array<{ dishId: string; quantity: number }>>([]);
@@ -111,12 +133,6 @@ export const BookingFormScreen = ({
     const [replacingSlotId, setReplacingSlotId] = useState<string | null>(null);
     const [editingLastModifiedAt, setEditingLastModifiedAt] = useState<string | null>(null);
     const [editingBooking, setEditingBooking] = useState<EditBookingLike | null>(null);
-
-    const estimatedSoftDrinkQuantity = Math.max(0, customerForm.numberOfTables * 2);
-    const estimatedBeerQuantity = Math.max(0, customerForm.numberOfTables);
-
-    const [softDrinkQuantity, setSoftDrinkQuantity] = useState(estimatedSoftDrinkQuantity);
-    const [beerQuantity, setBeerQuantity] = useState(estimatedBeerQuantity);
 
     const showToast = (msg: string, type: "success" | "error" = "success") => {
         setToast({ msg, type });
@@ -134,10 +150,15 @@ export const BookingFormScreen = ({
     function resetEditableSelections() {
         setDepositAmount(0);
         setExtraServicesState([]);
-        setManualServicesState([]);
         setExtraDishes([]);
+        setExtraBeverages([]);
+
+        setManualMenuMode("CUSTOM");
+        setManualComboSelections([]);
+        setManualServicesState([]);
         setManualDishes([]);
         setManualBeverages([]);
+
         setComboSlotReplacements({});
         setReplacingSlotId(null);
         setEditingBooking(null);
@@ -163,11 +184,43 @@ export const BookingFormScreen = ({
         setScreen("booking-availability");
     }
 
+    function fillManualComboSelectionsFromBooking(booking: EditBookingLike) {
+        const snapshots = booking.menuComboSnapshots ?? [];
+
+        const selections = snapshots
+            .map((snapshot, index) => {
+                const comboId = snapshot.comboId ?? "";
+
+                return {
+                    localId: snapshot.id ?? `${comboId}-${index}`,
+                    comboId,
+                    tableCount: snapshot.tableCount ?? 1,
+                    slotReplacements: Object.fromEntries(
+                        (snapshot.slotSnapshots ?? [])
+                            .filter((slot) => Boolean(slot.selectedDishId))
+                            .map((slot) => [
+                                String(slot.slotId ?? slot.id ?? ""),
+                                {
+                                    dishId: slot.selectedDishId ?? "",
+                                    dishName: slot.selectedDishName ?? "",
+                                    price: slot.selectedDishPrice ?? 0,
+                                },
+                            ])
+                            .filter(([slotId]) => Boolean(slotId))
+                    ),
+                };
+            })
+            .filter((item): item is ManualComboSelection => Boolean(item.comboId));
+
+        setManualComboSelections(selections);
+    }
+
     function fillFormFromBooking(booking: EditBookingLike) {
         setEditingBooking(booking);
         setEditingLastModifiedAt(booking.lastModifiedAt ?? null);
 
         setBookingMode(booking.bookingMode ?? "PACKAGE");
+        setManualMenuMode(booking.manualMenuMode ?? "CUSTOM");
         setBookingStep(2);
 
         setCustomerForm({
@@ -188,13 +241,21 @@ export const BookingFormScreen = ({
 
         setExtraServicesState([]);
         setExtraDishes([]);
+        setExtraBeverages([]);
+
+        setManualComboSelections([]);
         setManualServicesState([]);
         setManualDishes([]);
         setManualBeverages([]);
+
         setComboSlotReplacements({});
         setReplacingSlotId(null);
 
         const lines = booking.bookingLines ?? [];
+
+        if (booking.bookingMode === "MANUAL" && booking.manualMenuMode === "COMBO") {
+            fillManualComboSelectionsFromBooking(booking);
+        }
 
         if (booking.bookingMode === "MANUAL") {
             setManualServicesState(
@@ -209,7 +270,11 @@ export const BookingFormScreen = ({
 
             setManualDishes(
                 lines
-                    .filter((line) => line.itemType === "DISH")
+                    .filter(
+                        (line) =>
+                            line.itemType === "DISH" &&
+                            booking.manualMenuMode !== "COMBO"
+                    )
                     .map((line) => ({
                         dishId: line.itemId,
                         quantity: line.quantity ?? 1,
@@ -255,6 +320,20 @@ export const BookingFormScreen = ({
                         quantity: line.quantity ?? 1,
                     }))
                     .filter((item): item is { dishId: string; quantity: number } => !!item.dishId)
+            );
+
+            setExtraBeverages(
+                lines
+                    .filter(
+                        (line) =>
+                            line.itemType === "BEVERAGE" &&
+                            line.sourceType === "MANUAL_EXTRA"
+                    )
+                    .map((line) => ({
+                        beverageId: line.itemId,
+                        quantity: line.quantity ?? 1,
+                    }))
+                    .filter((item): item is { beverageId: string; quantity: number } => !!item.beverageId)
             );
         }
     }
@@ -324,11 +403,6 @@ export const BookingFormScreen = ({
         };
     }, [selectedBookingId, bookingPreselect?.hallId, bookingPreselect?.shiftId, bookingPreselect?.date]);
 
-    useEffect(() => {
-        setSoftDrinkQuantity((prev) => Math.max(prev, estimatedSoftDrinkQuantity));
-        setBeerQuantity((prev) => Math.max(prev, estimatedBeerQuantity));
-    }, [estimatedSoftDrinkQuantity, estimatedBeerQuantity]);
-
     const selectedPackage = packages.find((item) => item.id === selectedPackageId) ?? null;
     const selectedCombo = dishCombos.find((item) => item.id === selectedComboId) ?? null;
 
@@ -368,6 +442,16 @@ export const BookingFormScreen = ({
         }))
         .filter((item): item is { dish: DishResponse; quantity: number } => !!item.dish);
 
+    const selectedExtraBeverages = extraBeverages
+        .map((item) => ({
+            beverage: beverages.find((beverage) => beverage.id === item.beverageId),
+            quantity: item.quantity,
+        }))
+        .filter(
+            (item): item is { beverage: BeverageResponse; quantity: number } =>
+                !!item.beverage
+        );
+
     const selectedManualDishes = manualDishes
         .map((item) => ({
             dish: dishes.find((dish) => dish.id === item.dishId),
@@ -395,9 +479,18 @@ export const BookingFormScreen = ({
 
     const hallFee = summaryHallFee;
 
-    const packageBase = selectedPackage
+    const packageMenuComboCost = selectedPackage
         ? getPackagePricePerTable(selectedPackage) * customerForm.numberOfTables
         : 0;
+
+    const packageIncludedServiceCost =
+        bookingMode === "PACKAGE" ? selectedPackage?.includedServiceTotal ?? 0 : 0;
+
+    const packageIncludedBeverageCost =
+        bookingMode === "PACKAGE" ? selectedPackage?.beverageAllowanceTotal ?? 0 : 0;
+
+    const packageFixedIncludedCost =
+        packageIncludedServiceCost + packageIncludedBeverageCost;
 
     const packageExtraServiceCost = extraServices.reduce(
         (sum, item) => sum + (item.service.price ?? 0) * item.quantity,
@@ -409,17 +502,66 @@ export const BookingFormScreen = ({
         0
     );
 
-    const packageTotal = hallFee + packageBase + packageExtraServiceCost + packageExtraDishCost;
+    const packageExtraBeverageCost = selectedExtraBeverages.reduce(
+        (sum, item) => sum + (item.beverage.unitPrice ?? 0) * item.quantity,
+        0
+    );
+
+    const packageTotal =
+        hallFee +
+        packageMenuComboCost +
+        packageFixedIncludedCost +
+        packageExtraServiceCost +
+        packageExtraDishCost +
+        packageExtraBeverageCost;
+
+    function getSlotId(slot: { slotId?: string | number; id?: string }, index: number) {
+        return String(slot.slotId ?? slot.id ?? index);
+    }
+
+    function getSlotDefaultPrice(slot: {
+        defaultDishId?: string | null;
+        unitPrice?: number | null;
+    }) {
+        const defaultDish = dishes.find((dish) => dish.id === slot.defaultDishId);
+        return slot.unitPrice ?? defaultDish?.unitPrice ?? 0;
+    }
+
+    function calculateManualComboDishCost() {
+        return manualComboSelections.reduce((sum, selection) => {
+            const combo = dishCombos.find((item) => item.id === selection.comboId);
+            if (!combo) return sum;
+
+            const slots = combo.slots ?? [];
+
+            const menuTotalPerTable = slots.reduce((slotSum, slot, index) => {
+                const slotId = getSlotId(slot, index);
+                const replacement = selection.slotReplacements[slotId];
+
+                return slotSum + (replacement?.price ?? getSlotDefaultPrice(slot));
+            }, 0);
+
+            const discountRate = combo.comboDiscountRate ?? 0;
+            const discountedMenuPerTable = menuTotalPerTable * (1 - discountRate / 100);
+
+            return sum + discountedMenuPerTable * Math.max(1, selection.tableCount || 1);
+        }, 0);
+    }
 
     const manualServiceCost = manualServices.reduce(
         (sum, item) => sum + (item.service.price ?? 0) * item.quantity,
         0
     );
 
-    const manualDishCost = selectedManualDishes.reduce(
+    const manualCustomDishCost = selectedManualDishes.reduce(
         (sum, item) => sum + (item.dish.unitPrice ?? 0) * item.quantity * customerForm.numberOfTables,
         0
     );
+
+    const manualComboDishCost = calculateManualComboDishCost();
+
+    const manualDishCost =
+        manualMenuMode === "COMBO" ? manualComboDishCost : manualCustomDishCost;
 
     const manualBeverageCost = selectedManualBeverages.reduce(
         (sum, item) => sum + (item.beverage.unitPrice ?? 0) * item.quantity,
@@ -433,17 +575,26 @@ export const BookingFormScreen = ({
     const effectiveDepositAmount = Math.max(depositAmount, recommendedDeposit);
     const remainingAmount = Math.max(bookingAmount - effectiveDepositAmount, 0);
 
-    const foodAmount = bookingMode === "PACKAGE" ? packageBase + packageExtraDishCost : manualDishCost;
-    const serviceAmount = bookingMode === "PACKAGE" ? packageExtraServiceCost : manualServiceCost;
+    const foodAmount =
+        bookingMode === "PACKAGE"
+            ? packageMenuComboCost + packageExtraDishCost
+            : manualDishCost;
+
+    const serviceAmount =
+        bookingMode === "PACKAGE"
+            ? packageIncludedServiceCost + packageExtraServiceCost
+            : manualServiceCost;
 
     const beverageAmount =
-        bookingMode === "PACKAGE" ? selectedPackage?.beverageAllowanceTotal ?? 0 : manualBeverageCost;
+        bookingMode === "PACKAGE"
+            ? packageIncludedBeverageCost + packageExtraBeverageCost
+            : manualBeverageCost;
 
     const packageIncludedServiceAmount =
-        bookingMode === "PACKAGE" ? selectedPackage?.includedServiceTotal ?? 0 : 0;
+        bookingMode === "PACKAGE" ? packageIncludedServiceCost : 0;
 
     const packageIncludedBeverageAmount =
-        bookingMode === "PACKAGE" ? selectedPackage?.beverageAllowanceTotal ?? 0 : 0;
+        bookingMode === "PACKAGE" ? packageIncludedBeverageCost : 0;
 
     const isInitialLoading = loadingRefs || (isEditing && loadingBookingDetail);
 
@@ -493,6 +644,32 @@ export const BookingFormScreen = ({
         if (step === 3) {
             if (bookingMode === "PACKAGE" && !selectedPackageId) {
                 showToast("Vui lòng chọn gói tiệc.", "error");
+                return false;
+            }
+
+            if (bookingMode === "MANUAL" && manualMenuMode === "COMBO") {
+                if (manualComboSelections.length === 0) {
+                    showToast("Vui lòng chọn ít nhất một combo món ăn.", "error");
+                    return false;
+                }
+
+                const totalComboTables = manualComboSelections.reduce(
+                    (sum, item) => sum + Math.max(1, item.tableCount || 1),
+                    0
+                );
+
+                if (totalComboTables !== customerForm.numberOfTables) {
+                    showToast("Tổng số bàn của các combo phải bằng số bàn booking.", "error");
+                    return false;
+                }
+            }
+
+            if (
+                bookingMode === "MANUAL" &&
+                manualMenuMode === "CUSTOM" &&
+                selectedManualDishes.length === 0
+            ) {
+                showToast("Vui lòng chọn ít nhất một món ăn.", "error");
                 return false;
             }
         }
@@ -563,13 +740,28 @@ export const BookingFormScreen = ({
                 selectedComboId,
                 extraServices,
                 extraDishes: selectedExtraDishes,
+                extraBeverages: selectedExtraBeverages,
             });
 
             const manualDraftLines = buildManualDraftLines({
                 services: manualServices,
-                dishes: selectedManualDishes,
+                dishes: manualMenuMode === "CUSTOM" ? selectedManualDishes : [],
                 beverages: selectedManualBeverages,
             });
+
+            const manualComboPayload: ManualComboPayload[] =
+                bookingMode === "MANUAL" && manualMenuMode === "COMBO"
+                    ? manualComboSelections.map((selection) => ({
+                        comboId: selection.comboId,
+                        tableCount: Math.max(1, selection.tableCount || 1),
+                        slotReplacements: Object.entries(selection.slotReplacements)
+                            .filter(([, replacement]) => Boolean(replacement.dishId))
+                            .map(([slotId, replacement]) => ({
+                                slotId,
+                                dishId: replacement.dishId,
+                            })),
+                    }))
+                    : [];
 
             const bookingDateValue = bookingPreselect?.date ?? editingBooking?.bookingDate;
             const shiftIdValue = bookingPreselect?.shiftId ?? editingBooking?.shiftId;
@@ -580,7 +772,7 @@ export const BookingFormScreen = ({
                 return;
             }
 
-            const payload: BookingRequestPayload = {
+            const payload: BookingRequestPayloadWithManual = {
                 bookingDate: bookingDateValue,
                 shiftId: shiftIdValue,
                 hallId: hallIdValue,
@@ -596,8 +788,11 @@ export const BookingFormScreen = ({
                 packageId: bookingMode === "PACKAGE" ? selectedPackageId : null,
                 selectedMenuComboId: bookingMode === "PACKAGE" ? selectedComboId : null,
                 bookingDraftLines: bookingMode === "PACKAGE" ? packageDraftLines : manualDraftLines,
-                softDrinkQuantity: bookingMode === "PACKAGE" ? softDrinkQuantity : null,
-                beerQuantity: bookingMode === "PACKAGE" ? beerQuantity : null,
+                manualMenuMode: bookingMode === "MANUAL" ? manualMenuMode : null,
+                manualComboSelections:
+                    bookingMode === "MANUAL" && manualMenuMode === "COMBO"
+                        ? manualComboPayload
+                        : [],
                 depositAmount: effectiveDepositAmount,
                 note: customerForm.note.trim() || null,
                 status: isEditing ? editingBooking?.status ?? "PENDING" : "PENDING",
@@ -685,7 +880,12 @@ export const BookingFormScreen = ({
                     selectedCombo={selectedCombo}
                     dishCombos={dishCombos}
                     dishes={dishes}
+                    activeDishes={activeDishes}
+                    extraDishes={extraDishes}
+                    setExtraDishes={setExtraDishes}
+                    selectedExtraDishes={selectedExtraDishes}
                     activeServices={activeServices}
+                    activeBeverages={activeBeverages}
                     packagePreviewLines={packagePreviewLines}
                     packageBenefits={packageBenefits}
                     packageConditions={packageConditions}
@@ -693,21 +893,24 @@ export const BookingFormScreen = ({
                     setComboSlotReplacements={setComboSlotReplacements}
                     replacingSlotId={replacingSlotId}
                     setReplacingSlotId={setReplacingSlotId}
-                    estimatedSoftDrinkQuantity={estimatedSoftDrinkQuantity}
-                    estimatedBeerQuantity={estimatedBeerQuantity}
-                    softDrinkQuantity={softDrinkQuantity}
-                    beerQuantity={beerQuantity}
-                    setSoftDrinkQuantity={setSoftDrinkQuantity}
-                    setBeerQuantity={setBeerQuantity}
                     extraServicesState={extraServicesState}
                     setExtraServicesState={setExtraServicesState}
                     extraServices={extraServices}
+                    extraBeverages={extraBeverages}
+                    setExtraBeverages={setExtraBeverages}
+                    selectedExtraBeverages={selectedExtraBeverages}
                     addService={addService}
                     updateServiceQuantity={updateServiceQuantity}
                     removeService={removeService}
                 />
             ) : (
                 <BookingManualMode
+                    manualMenuMode={manualMenuMode}
+                    setManualMenuMode={setManualMenuMode}
+                    dishCombos={dishCombos}
+                    manualComboSelections={manualComboSelections}
+                    setManualComboSelections={setManualComboSelections}
+                    numberOfTables={customerForm.numberOfTables}
                     activeServices={activeServices}
                     activeDishes={activeDishes}
                     activeBeverages={activeBeverages}

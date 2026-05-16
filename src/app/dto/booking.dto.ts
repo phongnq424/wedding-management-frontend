@@ -23,6 +23,7 @@ export type BookingLineSourceTypeApi =
     | "PACKAGE_OPTIONAL"
     | "PACKAGE_BENEFIT"
     | "PACKAGE_DISCOUNT"
+    | "MANUAL_COMBO"
     | "MANUAL_EXTRA";
 
 export type BookingLineRequest = {
