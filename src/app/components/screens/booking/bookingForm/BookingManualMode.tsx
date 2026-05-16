@@ -167,7 +167,7 @@ export function BookingManualMode({
                         Kiểu chọn món manual
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                        Combo sẽ gửi về BE bằng manualComboSelections; món trong combo không gửi vào bookingDraftLines để tránh duplicate.
+                        Bạn mong muốn dùng combo hay tự chọn món ăn cho booking này? Chọn combo sẽ giúp bạn tiết kiệm thời gian hơn khi đã có sẵn các combo phù hợp, trong khi tự chọn sẽ linh hoạt hơn khi bạn muốn mix & match món ăn theo ý thích.
                     </p>
                 </div>
 
@@ -329,6 +329,17 @@ export function BookingManualMode({
                                                                 [slotId]: { dishId, dishName, price },
                                                             },
                                                         }))
+                                                    }
+                                                    onResetReplace={(slotId) =>
+                                                        updateManualCombo(selection.localId, (item) => {
+                                                            const nextReplacements = { ...item.slotReplacements };
+                                                            delete nextReplacements[slotId];
+
+                                                            return {
+                                                                ...item,
+                                                                slotReplacements: nextReplacements,
+                                                            };
+                                                        })
                                                     }
                                                     replacingSlotId={
                                                         replacingSlotKey?.startsWith(`${selection.localId}:`)

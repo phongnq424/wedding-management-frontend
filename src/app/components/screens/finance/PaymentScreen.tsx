@@ -75,7 +75,12 @@ type ProcessFormState = {
   referenceNumber: string;
   receivedAmount: string;
   note: string;
+
+  mfaChallengeId: string;
+  otpEmail: string;
+  otpExpiresInSeconds: number | null;
   inputCode: string;
+
   step: "DETAIL" | "TWO_FA";
 };
 
@@ -146,6 +151,9 @@ export function PaymentScreen() {
     referenceNumber: "",
     receivedAmount: "",
     note: "",
+    mfaChallengeId: "",
+    otpEmail: "",
+    otpExpiresInSeconds: null,
     inputCode: "",
     step: "DETAIL",
   });
@@ -263,6 +271,9 @@ export function PaymentScreen() {
       referenceNumber: "",
       receivedAmount: String(payment.amount),
       note: "",
+      mfaChallengeId: "",
+      otpEmail: "",
+      otpExpiresInSeconds: null,
       inputCode: "",
       step: "DETAIL",
     });
@@ -400,20 +411,49 @@ export function PaymentScreen() {
 
   async function handleProcessNext(payment: PaymentResponse) {
     const error = validateProcess(payment);
+
     if (error) {
       setFormError(error);
       return;
     }
 
-    setFormError(null);
-    setProcessForm((prev) => ({
-      ...prev,
-      receivedAmount: prev.paymentMethod === "CASH" ? prev.receivedAmount : String(payment.amount),
-      step: "TWO_FA",
-    }));
+    try {
+      setSaving(true);
+      setFormError(null);
+
+      const otp = await paymentService.createProcessPaymentOtp(payment.id);
+
+      setProcessForm((prev) => ({
+        ...prev,
+        receivedAmount:
+          prev.paymentMethod === "CASH"
+            ? prev.receivedAmount
+            : String(payment.amount),
+        mfaChallengeId: otp.mfaChallengeId,
+        otpEmail: otp.email,
+        otpExpiresInSeconds: otp.expiresInSeconds,
+        inputCode: "",
+        step: "TWO_FA",
+      }));
+
+      showToast("MSG55: Mã OTP đã được gửi đến email nhân viên.");
+    } catch (error) {
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : "MSG55: Không thể gửi mã OTP."
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleConfirmProcess(payment: PaymentResponse) {
+    if (!processForm.mfaChallengeId) {
+      setFormError("MSG56: Phiên xác thực OTP không hợp lệ. Vui lòng gửi lại mã.");
+      return;
+    }
+
     if (!processForm.inputCode.trim()) {
       setFormError("MSG2: Vui lòng nhập mã xác thực 2FA.");
       return;
@@ -426,21 +466,29 @@ export function PaymentScreen() {
 
     try {
       setSaving(true);
+      setFormError(null);
+
       await paymentService.process(payment.id, {
         paymentMethod: processForm.paymentMethod,
         paymentDate: processForm.paymentDate,
         referenceNumber: processForm.referenceNumber.trim() || null,
         receivedAmount,
         note: processForm.note.trim() || null,
+        mfaChallengeId: processForm.mfaChallengeId,
         inputCode: processForm.inputCode.trim(),
       });
 
       showToast("MSG6: Xử lý thanh toán thành công.");
       setModal(null);
+
       await loadPayments(page);
       await loadBookings();
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : "MSG5: Không thể xử lý thanh toán.");
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : "MSG5: Không thể xử lý thanh toán."
+      );
     } finally {
       setSaving(false);
     }
@@ -509,10 +557,10 @@ export function PaymentScreen() {
                   <th
                     key={h}
                     className={`px-4 py-3.5 text-xs font-semibold uppercase tracking-wide whitespace-nowrap ${["Số tiền", "Đã nhận", "Tiền thừa"].includes(h)
-                        ? "text-right"
-                        : h === "Hành động"
-                          ? "text-center"
-                          : "text-left"
+                      ? "text-right"
+                      : h === "Hành động"
+                        ? "text-center"
+                        : "text-left"
                       }`}
                   >
                     {h}
@@ -635,8 +683,8 @@ export function PaymentScreen() {
               loadPayments(0, nextFilters);
             }}
             className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors ${filters.status === tab.value
-                ? "border-accent text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+              ? "border-accent text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
           >
             {tab.label}
@@ -1040,6 +1088,14 @@ export function PaymentScreen() {
             </div>
           ) : (
             <div className="space-y-4">
+              {processForm.otpEmail && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-800">
+                  Mã OTP đã được gửi đến email <strong>{processForm.otpEmail}</strong>
+                  {processForm.otpExpiresInSeconds
+                    ? ` và có hiệu lực trong ${Math.floor(processForm.otpExpiresInSeconds / 60)} phút.`
+                    : "."}
+                </div>
+              )}
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-900 space-y-1.5">
                 <p className="font-semibold">Xác nhận xử lý thanh toán:</p>
                 <InfoRow label="Khách" value={modal.payment.customerName ?? "—"} />

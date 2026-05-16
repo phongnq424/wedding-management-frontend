@@ -1079,8 +1079,6 @@ export const BookingFormScreen = ({
                         <BookingDepositStep
                             bookingAmount={bookingAmount}
                             recommendedDeposit={recommendedDeposit}
-                            depositAmount={depositAmount}
-                            setDepositAmount={setDepositAmount}
                             remainingAmount={remainingAmount}
                         />
                     )}

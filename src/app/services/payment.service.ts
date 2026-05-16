@@ -3,6 +3,7 @@ import type {
     PageResponse,
     PaymentCancelRequestPayload,
     PaymentCreateRequestPayload,
+    PaymentOtpChallengeResponse,
     PaymentProcessRequestPayload,
     PaymentResponse,
     PaymentSearchParams,
@@ -64,6 +65,17 @@ export const paymentService = {
             method: "POST",
             body: JSON.stringify(payload),
         });
+    },
+
+    createProcessPaymentOtp: async (
+        paymentId: string
+    ): Promise<PaymentOtpChallengeResponse> => {
+        return await apiRequest<PaymentOtpChallengeResponse>(
+            `/payments/${paymentId}/otp`,
+            {
+                method: "POST",
+            }
+        );
     },
 
     process: async (

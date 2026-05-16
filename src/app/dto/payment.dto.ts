@@ -37,6 +37,14 @@ export type PaymentProcessRequestPayload = {
     receivedAmount: number;
     note?: string | null;
     inputCode: string;
+    mfaChallengeId: string;
+};
+
+export type PaymentOtpChallengeResponse = {
+    paymentId: string;
+    mfaChallengeId: string;
+    email: string;
+    expiresInSeconds: number;
 };
 
 export type PaymentResponse = {
